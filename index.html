@@ -186,6 +186,23 @@ html,body{height:100%;margin:0;overflow:hidden}
  .legend,.note{font-size:16px}
  .card{width:min(calc(100% - 40px),460px)}
 }
+
+/* ---- celular: leve e direto ---- */
+@media (max-width:1099.98px){
+ .bgL i,.gr,.bgL:before{display:none!important}
+ .bgP{background:radial-gradient(120% 70% at 15% 10%,#8a52a8 0,transparent 60%),radial-gradient(100% 60% at 90% 95%,#3a1c4c 0,transparent 65%),#623b75}
+ .bgG{background:radial-gradient(120% 70% at 85% 10%,#34e08a 0,transparent 60%),radial-gradient(100% 60% at 10% 95%,#00682f 0,transparent 65%),#00ae55}
+ #app>.sec>*{opacity:1!important;transform:none!important;will-change:auto}
+ .cloud{display:block;min-height:0!important;height:auto!important;margin:18px 0 8px}
+ .cloud svg.lines{display:none}
+ .grp{margin:0 0 22px}
+ .grp h3{margin:0 0 6px;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.85}
+ .grp .gw{display:flex;flex-wrap:wrap;align-items:center;gap:2px 4px}
+ .w{position:static!important;animation:none!important;transform:none!important;transition:none;padding:6px 10px;border-radius:10px}
+ .w.on{background:#fff}
+ .cenario .w.on{color:var(--roxo)}.oferta .w.on{color:var(--verde)}
+ .w.dim{opacity:.45}
+}
 </style>
 </head>
 <body>
@@ -338,6 +355,28 @@ function drawLines(el,node,nodes){
   set.forEach(o=>{const l=document.createElementNS(SVGNS,'line');l.setAttribute('x1',node.x);l.setAttribute('y1',node.y);l.setAttribute('x2',o.x);l.setAttribute('y2',o.y);s.appendChild(l)});
 }
 /* posição: palavras parecidas ficam perto. As mais citadas ficam no centro de cada grupo e as menos citadas, em volta */
+function layoutLite(g){
+  const C=CL[g],el=C.el;
+  if(C.lite)return;
+  C.lite=true;
+  el.querySelectorAll('.grp').forEach(x=>x.remove());
+  const by={};C.nodes.forEach(n=>{(by[n.t.theme]=by[n.t.theme]||[]).push(n)});
+  Object.values(by).sort((a,b)=>Math.max(...b.map(n=>n.t.n))-Math.max(...a.map(n=>n.t.n))||b.length-a.length).forEach(l=>{
+    l.sort((a,b)=>b.t.n-a.t.n||a.t.t.localeCompare(b.t.t,'pt'));
+    const d=document.createElement('div');d.className='grp';
+    d.innerHTML='<h3></h3><div class="gw"></div>';
+    d.querySelector('h3').textContent=N[l[0].t.theme].label;
+    const row=d.querySelector(".gw");
+    l.forEach(n=>{n.b.style.left='';n.b.style.top='';row.appendChild(n.b)});
+    el.appendChild(d);
+  });
+  el.style.height='';
+}
+function layoutFull(g){
+  const C=CL[g],el=C.el;
+  if(C.lite){C.lite=false;C.nodes.forEach(n=>el.appendChild(n.b));el.querySelectorAll('.grp').forEach(x=>x.remove())}
+  layout(g);
+}
 function layout(g){
   const C=CL[g],el=C.el,inset=mq.matches?40:22,W=Math.max(220,el.clientWidth-2*inset);C.W=W;C.inset=inset;
   const PAD=4,nodes=C.nodes;
@@ -405,13 +444,13 @@ function layout(g){
   el.style.height=Math.ceil(maxY-minY)+'px';el.style.minHeight='0';
   C.att=att;C.H=H;C.svg.setAttribute('viewBox',`0 0 ${W} ${Math.ceil(maxY-minY)}`);
 }
-function layoutAll(){['D','C'].forEach(g=>{if(CL[g])layout(g)})}
+function layoutAll(){['D','C'].forEach(g=>{if(!CL[g])return;mq.matches?layoutFull(g):layoutLite(g)})}
 cloud($('#cloudD'),'D');cloud($('#cloudC'),'C');
 
 function yOf(el){const r=el.getBoundingClientRect();return r.top+r.height/2}
 function pickWord(b,w){
   document.querySelectorAll('.w').forEach(x=>{x.classList.remove('on');x.classList.remove('dim')});
-  b.parentNode.querySelectorAll('.w').forEach(x=>{if(x===b)x.classList.add('on');else if(x.dataset.theme!==b.dataset.theme)x.classList.add('dim')});
+  b.closest('.cloud').querySelectorAll('.w').forEach(x=>{if(x===b)x.classList.add('on');else if(x.dataset.theme!==b.dataset.theme)x.classList.add('dim')});
   selWord=b;
   const nd=N[w.theme];
   const same=DATA.terms.filter(t=>t.theme===w.theme&&t.t!==w.t).sort((x,y)=>y.n-x.n);
@@ -598,7 +637,7 @@ function sync(){
   const off=e=>horiz?e.offsetLeft:e.offsetTop,len=e=>horiz?e.offsetWidth:e.offsetHeight;
   bgG.style.opacity=clamp01(.5+(pos+size/2-off(secs[2]))/size).toFixed(3);
   let best=0,bf=-1;
-  secs.forEach((e,i)=>{const o=Math.min(pos+size,off(e)+len(e))-Math.max(pos,off(e)),f=clamp01(o/size);e.style.setProperty('--o',clamp01((f-.2)/.55).toFixed(3));if(f>bf){bf=f;best=i}});
+  secs.forEach((e,i)=>{const o=Math.min(pos+size,off(e)+len(e))-Math.max(pos,off(e)),f=clamp01(o/size);if(!horiz)e.style.setProperty('--o',clamp01((f-.2)/.55).toFixed(3));if(f>bf){bf=f;best=i}});
   dots.classList.toggle('lt',best==0||best==3);
   dotBtns.forEach((d,i)=>d.setAttribute('aria-current',i==best?'true':'false'));
 }
